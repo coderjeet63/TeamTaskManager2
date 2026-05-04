@@ -18,6 +18,7 @@ const allowedOrigins = [
   env.clientUrl,
   "http://localhost:5173",
   "http://127.0.0.1:5173",
+  "https://team-task-manager2-psi.vercel.app",
 ];
 
 const apiLimiter = rateLimit({
