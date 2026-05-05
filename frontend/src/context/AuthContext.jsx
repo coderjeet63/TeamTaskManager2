@@ -21,6 +21,8 @@ export function AuthProvider({ children }) {
           })
         }
       } catch {
+        // Token invalid or missing — clear it
+        localStorage.removeItem('auth_token')
         if (isMounted) {
           setUser(null)
         }
@@ -40,6 +42,10 @@ export function AuthProvider({ children }) {
 
   const login = async (payload) => {
     const response = await authService.login(payload)
+    // Save token to localStorage so it works in incognito mode too
+    if (response.data.token) {
+      localStorage.setItem('auth_token', response.data.token)
+    }
     startTransition(() => {
       setUser(response.data.user)
     })
@@ -48,6 +54,10 @@ export function AuthProvider({ children }) {
 
   const register = async (payload) => {
     const response = await authService.register(payload)
+    // Save token to localStorage so it works in incognito mode too
+    if (response.data.token) {
+      localStorage.setItem('auth_token', response.data.token)
+    }
     startTransition(() => {
       setUser(response.data.user)
     })
@@ -58,6 +68,8 @@ export function AuthProvider({ children }) {
     try {
       await authService.logout()
     } finally {
+      // Always clear token from localStorage on logout
+      localStorage.removeItem('auth_token')
       startTransition(() => {
         setUser(null)
       })

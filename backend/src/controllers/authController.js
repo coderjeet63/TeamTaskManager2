@@ -17,20 +17,20 @@ const register = asyncHandler(async (req, res) => {
     throw new ApiError(StatusCodes.CONFLICT, "An account with this email already exists.");
   }
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-  });
+  const user = await User.create({ name, email, password });
 
   const token = createToken(user._id);
+
+  // Set cookie (works in normal mode)
   res.cookie(env.cookieName, token, getCookieOptions());
 
+  // Also return token in body so frontend can store it for incognito/cross-site
   res.status(StatusCodes.CREATED).json({
     success: true,
     message: "Account created successfully.",
     data: {
       user: serializeUser(user),
+      token,
     },
   });
 });
@@ -45,13 +45,17 @@ const login = asyncHandler(async (req, res) => {
   }
 
   const token = createToken(user._id);
+
+  // Set cookie (works in normal mode)
   res.cookie(env.cookieName, token, getCookieOptions());
 
+  // Also return token in body so frontend can store it for incognito/cross-site
   res.status(StatusCodes.OK).json({
     success: true,
     message: "Logged in successfully.",
     data: {
       user: serializeUser(user),
+      token,
     },
   });
 });
