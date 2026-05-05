@@ -6,8 +6,8 @@ A full-stack team task management app built for the "Team Task Manager" assignme
 
 Before submitting, fill in these two items with your real links:
 
-- Live application URL: `ADD_YOUR_RAILWAY_URLS_HERE`
-- Demo video URL: `ADD_YOUR_DEMO_VIDEO_LINK_HERE`
+- Live application URL: `[ADD_YOUR_Render_URLS_HERE](https://teamtaskmanager2-1.onrender.com/)`
+- Demo video URL: `[ADD_YOUR_DEMO_VIDEO_LINK_HERE](https://www.loom.com/share/f222d2b4543940f495e3f322ebce3cb7)`
 
 Repository URL is this GitHub repo.
 
