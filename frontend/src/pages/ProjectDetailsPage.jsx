@@ -25,7 +25,8 @@ function ProjectDetailsPage() {
   const [project, setProject] = useState(null)
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [taskLoading, setTaskLoading] = useState(false)
+  const [taskLoading, setTaskLoading] = useState(true)
+  const [projectLoadError, setProjectLoadError] = useState(null)
   const [filters, setFilters] = useState({
     assignedTo: '',
     priority: '',
@@ -49,6 +50,7 @@ function ProjectDetailsPage() {
   const loadProject = async () => {
     const response = await projectService.getProject(projectId)
     setProject(response.data.project)
+    setProjectLoadError(null)
   }
 
   const loadTasks = async () => {
@@ -74,16 +76,35 @@ function ProjectDetailsPage() {
 
     const bootstrap = async () => {
       try {
-        const [projectResponse, taskResponse] = await Promise.all([
-          projectService.getProject(projectId),
-          taskService.getTasks({ limit: 50, projectId }),
-        ])
+        const projectResponse = await projectService.getProject(projectId)
 
         if (isMounted) {
           setProject(projectResponse.data.project)
-          setTasks(taskResponse.data.tasks)
+          setProjectLoadError(null)
         }
       } catch (error) {
+        if (isMounted) {
+          const status = error?.response?.status
+
+          setProject(null)
+          setProjectLoadError(
+            status === 403
+              ? {
+                  title: 'Access denied',
+                  description: 'You do not have permission to access this project workspace.',
+                }
+              : status === 404
+                ? {
+                    title: 'Project not found',
+                    description: 'The requested project could not be loaded or it no longer exists.',
+                  }
+                : {
+                    title: 'Unable to load project',
+                    description: 'There was a problem loading this workspace. Please try again.',
+                  },
+          )
+        }
+
         toast.error(getErrorMessage(error))
       } finally {
         if (isMounted) {
@@ -255,8 +276,11 @@ function ProjectDetailsPage() {
   if (!project) {
     return (
       <EmptyState
-        title="Project not found"
-        description="The requested project could not be loaded or you may not have permission to access it."
+        title={projectLoadError?.title || 'Project not found'}
+        description={
+          projectLoadError?.description ||
+          'The requested project could not be loaded or you may not have permission to access it.'
+        }
       />
     )
   }

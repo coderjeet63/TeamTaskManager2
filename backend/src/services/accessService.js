@@ -16,6 +16,9 @@ const toComparableId = (value) => {
   return value.toString();
 };
 
+const memberHasUserId = (member, userId) =>
+  toComparableId(member.user) === toComparableId(userId);
+
 const getUserProjectScopes = async (userId) => {
   // RBAC middleware checks whether user is admin or member by loading project membership scopes
   const comparableUserId = toComparableId(userId);
@@ -68,12 +71,11 @@ const buildAccessibleTaskFilter = (userId, scopes) => {
 };
 
 const isProjectMember = (project, userId) =>
-  project.members.some((member) => member.user.toString() === toComparableId(userId));
+  project.members.some((member) => memberHasUserId(member, userId));
 
 const canManageProject = (project, userId) =>
   project.members.some(
-    (member) =>
-      member.user.toString() === toComparableId(userId) && member.role === "admin"
+    (member) => memberHasUserId(member, userId) && member.role === "admin"
   );
 
 const canManageTask = (task, scopes) =>
