@@ -19,6 +19,13 @@ import taskService from '../services/taskService'
 import userService from '../services/userService'
 import { formatDate, getErrorMessage } from '../utils/format'
 
+const defaultTaskFilters = {
+  assignedTo: '',
+  priority: '',
+  search: '',
+  status: '',
+}
+
 function ProjectDetailsPage() {
   const { projectId } = useParams()
   const { user } = useAuth()
@@ -27,25 +34,30 @@ function ProjectDetailsPage() {
   const [loading, setLoading] = useState(true)
   const [taskLoading, setTaskLoading] = useState(true)
   const [projectLoadError, setProjectLoadError] = useState(null)
-  const [filters, setFilters] = useState({
-    assignedTo: '',
-    priority: '',
-    search: '',
-    status: '',
-  })
+  const [filters, setFilters] = useState(defaultTaskFilters)
   const deferredSearch = useDeferredValue(filters.search)
   const [memberQuery, setMemberQuery] = useState('')
   const deferredMemberQuery = useDeferredValue(memberQuery)
   const [searchResults, setSearchResults] = useState([])
   const [viewMode, setViewMode] = useState('table')
   const [projectEditorOpen, setProjectEditorOpen] = useState(false)
-  const [taskEditorOpen, setTaskEditorOpen] = useState(false)
+  const [taskEditorOpen, setTaskEditorOpen] = useState(true)
   const [editingTask, setEditingTask] = useState(null)
   const [savingProject, setSavingProject] = useState(false)
   const [savingTask, setSavingTask] = useState(false)
   const [addingMember, setAddingMember] = useState(false)
 
   const isAdmin = project?.currentUserRole === 'admin'
+  const hasActiveTaskFilters = Boolean(
+    filters.assignedTo || filters.priority || filters.search.trim() || filters.status,
+  )
+  const taskViewHint = isAdmin
+    ? viewMode === 'table'
+      ? 'Use the task manager above for full admin task CRUD: title, assignee, due date, priority, status, and description. Use the status dropdown in the table below for quick progress changes.'
+      : 'Use the task manager above for full admin task CRUD: title, assignee, due date, priority, status, and description. Use the board below to drag cards between columns and update progress.'
+    : viewMode === 'table'
+      ? 'This view lets you update the status of tasks assigned to you. Members cannot edit due date, priority, or assignee details.'
+      : 'Drag your assigned task cards between columns to update status. Members cannot edit due date, priority, or assignee details.'
 
   const loadProject = async () => {
     const response = await projectService.getProject(projectId)
@@ -165,6 +177,10 @@ function ProjectDetailsPage() {
       ...current,
       [field]: value,
     }))
+  }
+
+  const clearTaskFilters = () => {
+    setFilters(defaultTaskFilters)
   }
 
   const handleProjectUpdate = async (values) => {
@@ -319,7 +335,7 @@ function ProjectDetailsPage() {
                     setTaskEditorOpen((current) => !current)
                   }}
                 >
-                  {taskEditorOpen ? 'Hide task form' : 'Create task'}
+                  {taskEditorOpen ? 'Hide task manager' : 'Show task manager'}
                 </Button>
               </>
             ) : null}
@@ -361,8 +377,9 @@ function ProjectDetailsPage() {
             <div className="space-y-5">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
                 <div>
-                  <p className="eyebrow">Task Views</p>
+                  <p className="eyebrow">Project Tasks</p>
                   <h2 className="font-display text-2xl font-semibold text-slate-50">Execution board</h2>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{taskViewHint}</p>
                 </div>
                 <div className="flex gap-3">
                   <Button
@@ -392,11 +409,39 @@ function ProjectDetailsPage() {
                   value: member.user._id,
                 }))}
                 onChange={handleFilterChange}
+                onReset={clearTaskFilters}
                 showAssignee={isAdmin}
               />
 
               {taskLoading ? (
                 <PageLoader label="Refreshing tasks..." />
+              ) : !tasks.length ? (
+                <EmptyState
+                  title={hasActiveTaskFilters ? 'No tasks match these filters' : 'No tasks in this project yet'}
+                  description={
+                    hasActiveTaskFilters
+                      ? 'Clear the active search, status, priority, or assignee filters to show matching tasks again.'
+                      : isAdmin
+                        ? 'Create a task to add a due date, set a priority, assign it to a teammate, and start tracking progress.'
+                        : 'Tasks for this project will appear here when an admin assigns work or makes tasks available to you.'
+                  }
+                  action={
+                    hasActiveTaskFilters ? (
+                      <Button variant="secondary" onClick={clearTaskFilters}>
+                        Clear filters
+                      </Button>
+                    ) : isAdmin ? (
+                      <Button
+                        onClick={() => {
+                          setEditingTask(null)
+                          setTaskEditorOpen(true)
+                        }}
+                      >
+                        Create first task
+                      </Button>
+                    ) : null
+                  }
+                />
               ) : viewMode === 'board' ? (
                 <KanbanBoard tasks={tasks} onStatusChange={handleStatusChange} />
               ) : (

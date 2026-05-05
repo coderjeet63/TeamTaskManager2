@@ -69,7 +69,7 @@ function TaskForm({
           {mode === 'create' ? 'Plan a new task' : 'Refine task details'}
         </h3>
         <p className="text-sm text-slate-400">
-          Assign work clearly, set priorities, and make the expected finish date visible.
+          Admins can manage title, assignee, due date, priority, status, and description from this form.
         </p>
       </div>
 
@@ -96,13 +96,13 @@ function TaskForm({
         />
       </div>
 
-      <TextareaField
-        label="Description"
-        name="description"
-        placeholder="Capture task context, dependencies, or reviewer notes."
-        value={formData.description}
-        onChange={handleChange}
-      />
+      <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-4">
+        <p className="text-xs uppercase tracking-[0.24em] text-slate-500">Scheduling</p>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          Set the due date and priority here before saving so the task appears correctly in dashboards and overdue
+          tracking.
+        </p>
+      </div>
 
       <div className="grid gap-5 md:grid-cols-3">
         <InputField
@@ -128,6 +128,14 @@ function TaskForm({
           options={statusOptions}
         />
       </div>
+
+      <TextareaField
+        label="Description"
+        name="description"
+        placeholder="Capture task context, dependencies, or reviewer notes."
+        value={formData.description}
+        onChange={handleChange}
+      />
 
       <div className="flex flex-wrap gap-3">
         <Button type="submit" loading={submitting}>

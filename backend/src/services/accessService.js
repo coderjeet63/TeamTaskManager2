@@ -19,10 +19,25 @@ const toComparableId = (value) => {
 const memberHasUserId = (member, userId) =>
   toComparableId(member.user) === toComparableId(userId);
 
+const isProjectCreator = (project, userId) =>
+  toComparableId(project.createdBy) === toComparableId(userId);
+
+const getProjectMembership = (project, userId) =>
+  project.members.find((member) => memberHasUserId(member, userId));
+
+const getProjectRole = (project, userId) => {
+  if (isProjectMember(project, userId)) {
+    return "admin";
+  }
+
+  return "member";
+};
+
 const getUserProjectScopes = async (userId) => {
   // RBAC middleware checks whether user is admin or member by loading project membership scopes
-  const comparableUserId = toComparableId(userId);
-  const projects = await Project.find({ "members.user": userId }).select("_id members");
+  const projects = await Project.find({
+    $or: [{ createdBy: userId }, { "members.user": userId }],
+  }).select("_id createdBy members");
 
   const scopes = {
     projectIds: [],
@@ -32,18 +47,18 @@ const getUserProjectScopes = async (userId) => {
 
   projects.forEach((project) => {
     const projectId = project._id.toString();
-    const membership = project.members.find(
-      (member) => member.user.toString() === comparableUserId
-    );
+    const role = getProjectRole(project, userId);
 
     scopes.projectIds.push(projectId);
 
-    if (membership?.role === "admin") {
+    if (role === "admin") {
       scopes.adminProjectIds.push(projectId);
       return;
     }
 
-    scopes.memberProjectIds.push(projectId);
+    if (role === "member") {
+      scopes.memberProjectIds.push(projectId);
+    }
   });
 
   return scopes;
@@ -71,12 +86,11 @@ const buildAccessibleTaskFilter = (userId, scopes) => {
 };
 
 const isProjectMember = (project, userId) =>
+  isProjectCreator(project, userId) ||
   project.members.some((member) => memberHasUserId(member, userId));
 
 const canManageProject = (project, userId) =>
-  project.members.some(
-    (member) => memberHasUserId(member, userId) && member.role === "admin"
-  );
+  getProjectRole(project, userId) === "admin";
 
 const canManageTask = (task, scopes) =>
   scopes.adminProjectIds.includes(toComparableId(task.project));
@@ -88,6 +102,7 @@ module.exports = {
   buildAccessibleTaskFilter,
   canManageProject,
   canManageTask,
+  getProjectRole,
   getUserProjectScopes,
   isProjectMember,
   isTaskAssignee,

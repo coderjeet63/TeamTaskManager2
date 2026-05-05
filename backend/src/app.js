@@ -15,10 +15,12 @@ const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 const allowedOrigins = [
-  env.clientUrl,
-  "http://localhost:5173",
-  "http://127.0.0.1:5173",
-  "https://team-task-manager2-psi.vercel.app",
+  ...new Set(
+    [env.clientUrl, "http://localhost:5173", "http://127.0.0.1:5173"]
+      .flatMap((value) => value.split(","))
+      .map((value) => value.trim())
+      .filter(Boolean)
+  ),
 ];
 
 const apiLimiter = rateLimit({

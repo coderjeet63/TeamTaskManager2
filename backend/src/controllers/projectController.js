@@ -7,6 +7,7 @@ const User = require("../models/User");
 const { logActivity } = require("../services/activityService");
 const {
   canManageProject,
+  getProjectRole,
   isProjectMember,
   toComparableId,
 } = require("../services/accessService");
@@ -62,9 +63,6 @@ const buildProjectStatsMap = async (projectIds) => {
 
 const formatProject = (project, taskStats, currentUserId) => {
   const comparableUserId = toComparableId(currentUserId);
-  const membership = project.members.find(
-    (member) => toComparableId(member.user?._id || member.user) === comparableUserId
-  );
 
   return {
     ...project,
@@ -75,7 +73,14 @@ const formatProject = (project, taskStats, currentUserId) => {
       "in-progress": 0,
       done: 0,
     },
-    currentUserRole: membership?.role || "member",
+    currentUserRole: getProjectRole(project, currentUserId),
+    members: (project.members || []).map((member) => ({
+      ...member,
+      role:
+        toComparableId(member.user?._id || member.user) === comparableUserId
+          ? "admin"
+          : "member",
+    })),
   };
 };
 

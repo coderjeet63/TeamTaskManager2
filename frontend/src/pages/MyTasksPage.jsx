@@ -1,6 +1,8 @@
 import { useDeferredValue, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
+import { useNavigate } from 'react-router-dom'
 
+import Button from '../components/common/Button'
 import EmptyState from '../components/common/EmptyState'
 import PageLoader from '../components/common/PageLoader'
 import Panel from '../components/common/Panel'
@@ -10,20 +12,24 @@ import { useAuth } from '../context/AuthContext'
 import taskService from '../services/taskService'
 import { getErrorMessage } from '../utils/format'
 
+const defaultTaskFilters = {
+  priority: '',
+  search: '',
+  status: '',
+}
+
 function MyTasksPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
   })
-  const [filters, setFilters] = useState({
-    priority: '',
-    search: '',
-    status: '',
-  })
+  const [filters, setFilters] = useState(defaultTaskFilters)
   const deferredSearch = useDeferredValue(filters.search)
+  const hasActiveTaskFilters = Boolean(filters.priority || filters.search.trim() || filters.status)
 
   const loadTasks = async (page = pagination.page) => {
     try {
@@ -58,6 +64,10 @@ function MyTasksPage() {
     }))
   }
 
+  const clearTaskFilters = () => {
+    setFilters(defaultTaskFilters)
+  }
+
   const handleStatusChange = async (taskId, status) => {
     try {
       await taskService.updateTaskStatus(taskId, status)
@@ -82,12 +92,19 @@ function MyTasksPage() {
             Filter only the tasks assigned to you, keep statuses current, and use the table as a clear reviewer demo of
             member-level task execution.
           </p>
+          <p className="max-w-2xl text-sm leading-7 text-slate-400">
+            This page only shows tasks assigned to your current account. Tasks assigned to teammates stay on the
+            project board instead of appearing here.
+          </p>
+          <p className="max-w-2xl text-sm leading-7 text-slate-400">
+            New tasks are created inside a project workspace by using the `Create task` button on the project page.
+          </p>
         </div>
       </Panel>
 
       <Panel>
         <div className="space-y-5">
-          <TaskFilters filters={filters} onChange={handleFilterChange} />
+          <TaskFilters filters={filters} onChange={handleFilterChange} onReset={clearTaskFilters} />
 
           {tasks.length ? (
             <>
@@ -124,8 +141,23 @@ function MyTasksPage() {
             </>
           ) : (
             <EmptyState
-              title="No assigned tasks right now"
-              description="Once tasks are assigned to you, they will appear here with filters and status controls."
+              title={hasActiveTaskFilters ? 'No tasks match these filters' : 'No assigned tasks right now'}
+              description={
+                hasActiveTaskFilters
+                  ? 'Clear the active search, status, or priority filters to see matching assigned tasks again.'
+                  : 'Once a task is assigned to your account, it will appear here with due date, priority, and status controls.'
+              }
+              action={
+                hasActiveTaskFilters ? (
+                  <Button variant="secondary" onClick={clearTaskFilters}>
+                    Clear filters
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => navigate('/projects')}>
+                    Open projects
+                  </Button>
+                )
+              }
             />
           )}
         </div>
