@@ -19,9 +19,13 @@ const {
 
 const router = express.Router();
 
+// All task routes require a valid JWT
 router.use(authenticate);
 
-router.route("/").get(listTasks).post(createTaskValidation, validateRequest, createTask);
+router
+  .route("/")
+  .get(listTasks)
+  .post(createTaskValidation, validateRequest, createTask);
 
 router.patch(
   "/:taskId/status",

@@ -20,6 +20,7 @@ const {
 
 const router = express.Router();
 
+// All project routes require a valid JWT
 router.use(authenticate);
 
 router

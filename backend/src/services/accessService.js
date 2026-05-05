@@ -1,18 +1,9 @@
 const Project = require("../models/Project");
 
 const toComparableId = (value) => {
-  if (!value) {
-    return "";
-  }
-
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (value._id) {
-    return value._id.toString();
-  }
-
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return value._id.toString();
   return value.toString();
 };
 
@@ -25,16 +16,39 @@ const isProjectCreator = (project, userId) =>
 const getProjectMembership = (project, userId) =>
   project.members.find((member) => memberHasUserId(member, userId));
 
+// ✅ FIXED: returns the actual role stored in DB
+// Previously this was broken — it returned "admin" for ALL members
 const getProjectRole = (project, userId) => {
-  if (isProjectMember(project, userId)) {
+  // Creator is always ADMIN
+  if (isProjectCreator(project, userId)) {
     return "admin";
   }
-
-  return "member";
+  // Read the actual role from the members array in DB
+  const membership = getProjectMembership(project, userId);
+  if (membership) {
+    return membership.role; // "admin" or "member" as stored
+  }
+  // Not a member of this project at all
+  return null;
 };
 
+const isProjectMember = (project, userId) =>
+  isProjectCreator(project, userId) ||
+  project.members.some((member) => memberHasUserId(member, userId));
+
+// Only ADMIN role can manage project (add/remove members, delete, create tasks)
+const canManageProject = (project, userId) =>
+  getProjectRole(project, userId) === "admin";
+
+// Only ADMIN of the task's project can do full task CRUD
+const canManageTask = (task, scopes) =>
+  scopes.adminProjectIds.includes(toComparableId(task.project));
+
+// MEMBER can only update status of tasks assigned specifically to them
+const isTaskAssignee = (task, userId) =>
+  toComparableId(task.assignedTo) === toComparableId(userId);
+
 const getUserProjectScopes = async (userId) => {
-  // RBAC middleware checks whether user is admin or member by loading project membership scopes
   const projects = await Project.find({
     $or: [{ createdBy: userId }, { "members.user": userId }],
   }).select("_id createdBy members");
@@ -53,10 +67,7 @@ const getUserProjectScopes = async (userId) => {
 
     if (role === "admin") {
       scopes.adminProjectIds.push(projectId);
-      return;
-    }
-
-    if (role === "member") {
+    } else if (role === "member") {
       scopes.memberProjectIds.push(projectId);
     }
   });
@@ -72,10 +83,12 @@ const buildAccessibleTaskFilter = (userId, scopes) => {
   const conditions = [];
 
   if (scopes.adminProjectIds.length) {
+    // ADMIN sees ALL tasks in their projects
     conditions.push({ project: { $in: scopes.adminProjectIds } });
   }
 
   if (scopes.memberProjectIds.length) {
+    // MEMBER sees ONLY tasks assigned to them
     conditions.push({
       project: { $in: scopes.memberProjectIds },
       assignedTo: toComparableId(userId),
@@ -84,19 +97,6 @@ const buildAccessibleTaskFilter = (userId, scopes) => {
 
   return conditions.length === 1 ? conditions[0] : { $or: conditions };
 };
-
-const isProjectMember = (project, userId) =>
-  isProjectCreator(project, userId) ||
-  project.members.some((member) => memberHasUserId(member, userId));
-
-const canManageProject = (project, userId) =>
-  getProjectRole(project, userId) === "admin";
-
-const canManageTask = (task, scopes) =>
-  scopes.adminProjectIds.includes(toComparableId(task.project));
-
-const isTaskAssignee = (task, userId) =>
-  toComparableId(task.assignedTo) === toComparableId(userId);
 
 module.exports = {
   buildAccessibleTaskFilter,
